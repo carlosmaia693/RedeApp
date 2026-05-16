@@ -1,10 +1,15 @@
 import javax.swing.*;
 import javax.swing.tree.*;
 import java.awt.*;
+
 import java.net.InetAddress;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.InetAddress;
+import java.net.URL;
+import java.net.HttpURLConnection;
+
+import java.io.*;
+import java.util.*;
 
 public class RedeApp {
 	
@@ -21,6 +26,7 @@ public class RedeApp {
         String mac;
         boolean online;
 		String setor;
+		long lastSeen;
 
         PC(String nome, String host, String ip, String mac, String setor) {
             this.nome = nome;
@@ -29,6 +35,7 @@ public class RedeApp {
             this.mac = mac;
             this.online = false;
 			this.setor = setor;
+			this.lastSeen = 0;
         }
 
         public String toString() {
@@ -48,46 +55,179 @@ public class RedeApp {
     // ==============================
     // Lista de PCs
     // ==============================
-    static PC[] pcs = {
-
-		// ================= SALAS =================
-		new PC("Sala 01", "KIDS-ROOM", "10.224.10.29", "00-E0-4C-A3-04-34", "Salas"),
-		new PC("Sala 02", "2ND-ROOM", "10.224.10.27", "F4-8E-38-E4-92-8B", "Salas"),
-		new PC("Sala 03", "3RD-ROOM", "10.224.10.14", "0C-9D-92-C7-E1-61", "Salas"),
-		new PC("Sala 04", "4TH-ROOM", "10.224.10.24", "F4-8E-38-E3-68-30", "Salas"),
-		new PC("Sala 05", "5TH-ROOM", "10.224.10.33", "0C-9D-92-C7-E1-39", "Salas"),
-		new PC("Sala 06", "6TH-ROOM", "10.224.10.36", "4C-CC-6A-4D-DC-89", "Salas"),
-		new PC("Sala 07", "7TH-ROOM", "10.224.10.16", "FC-AA-14-F7-ED-39", "Salas"),
-		new PC("Sala 08", "8TH-ROOM", "10.224.10.35", "0C-9D-92-C7-E2-31", "Salas"),
-		new PC("Sala 09", "TECH-ROOM", "10.224.10.32", "0C-9D-92-C7-E7-B5", "Salas"),
-		new PC("Sala 10", "MAKER-ROOM", "10.224.10.48", "0C-9D-92-C7-E1-EB", "Salas"),
-
-		// ================= SPGKS =================
-		new PC("SPGKS 01", "SPGKS1", "10.224.10.20", "00-EA-7B-AB-07-7C", "SPGKS"),
-		new PC("SPGKS 02", "SPGKS2", "10.224.10.53", "0C-9D-92-C7-E1-F0", "SPGKS"),
-		new PC("SPGKS 03", "SPGKS3", "10.224.10.30", "0C-9D-92-C7-E1-69", "SPGKS"),
-		new PC("SPGKS 04", "SPGKS4", "10.224.10.56", "0C-9D-92-C7-E1-ED", "SPGKS"),
-		new PC("SPGKS 05", "SPGKS5", "10.224.10.26", "22-28-4D-01-7A-C0", "SPGKS"),
-		new PC("SPGKS 06", "SPGKS6", "10.224.10.37", "5C-A6-E6-24-C3-B4", "SPGKS"),
-		new PC("SPGKS 07", "SPGKS7", "10.224.10.22", "0C-9D-92-C7-E2-2B", "SPGKS"),
-		new PC("SPGKS 08", "SPGKS8", "10.224.10.55", "0C-9D-92-C7-E1-10", "SPGKS"),
-		new PC("SPGKS 09", "SPGKS9", "10.224.10.44", "22-01-4D-10-0D-32", "SPGKS"),
-		new PC("SPGKS 10", "SPGKS10", "10.224.10.54", "0C-9D-92-C7-E0-FC", "SPGKS"),
-		new PC("SPGKS 11", "SPGKS11", "10.224.10.28", "22-28-4D-01-7A-BF", "SPGKS"),
-		new PC("SPGKS 12", "SPGKS12", "10.224.10.18", "B0-6E-BF-5A-F3-F7", "SPGKS"),
-		new PC("SPGKS 13", "SPGKS13", "10.224.10.12", "22-34-4D-09-62-A3", "SPGKS"),
-
-		// ================= SECRETARIA =================
-		new PC("Secretaria 01", "ATENDIMENTO1", "10.224.10.42", "78-F2-9E-F3-24-97", "Secretaria"),
-		new PC("Secretaria 02", "ATENDIMENTO2", "10.224.10.17", "D4-5D-DF-03-D8-EB", "Secretaria"),
-		new PC("Secretaria 03", "ATENDIMENTO3", "10.224.10.15", "D4-5D-DF-03-DC-1B", "Secretaria"),
-		new PC("Fiscal", "CONTROLLER", "10.224.10.23", "70-4D-7B-CE-66-9A", "Secretaria"),
-		new PC("Comercial", "COMERCIAL", "10.224.10.39", "D4-5D-DF-03-D8-C0", "Secretaria"),
-		new PC("Coordenacao", "COORDINATOR", "10.224.10.25", "70-4D-7B-CE-65-D8", "Secretaria"),
-		new PC("RH", "MINIPC-RESERVA", "10.224.10.19", "D4-5D-DF-05-7E-E6", "Secretaria"),
-		new PC("Gerencia", "GERENTE", "10.224.10.38", "D4-5D-DF-03-E3-14", "Secretaria")
-	};
+    static java.util.List<PC> pcs = new java.util.ArrayList<>();
 	
+	static String definirSetor(String nomePC) {
+
+		String n = nomePC.toUpperCase();
+
+		if (n.contains("ROOM")) {
+			return "Salas de Aula";
+		}
+
+		if (n.contains("SPGKS")) {
+			return "Super Geeks";
+		}
+
+		return "Administrativo";
+	}
+	
+	static void carregarPCsDoServidor() {
+
+		try {
+			URL url = new URL("http://10.224.10.45:8080/pcs");
+
+			HttpURLConnection con =
+					(HttpURLConnection) url.openConnection();
+
+			con.setRequestMethod("GET");
+
+			BufferedReader br = new BufferedReader(
+					new InputStreamReader(con.getInputStream())
+			);
+
+			StringBuilder response = new StringBuilder();
+			String line;
+
+			while ((line = br.readLine()) != null) {
+				response.append(line);
+			}
+
+			br.close();
+
+			String json = response.toString();
+
+			pcs.clear();
+
+			json = json.substring(1, json.length() - 1); // remove [ ]
+			String[] itens = json.split("\\},\\{");
+			
+			for (String item : itens) {
+				
+				item = item.replace("{", "").replace("}", "");
+
+				String host = extrair(item, "host");
+				String ip = extrair(item, "ip");
+				String mac = extrair(item, "mac");
+				String setor = definirSetor(host);
+				long lastSeen = Long.parseLong(extrairNumero(item, "lastSeen"));
+				boolean online = extrairBoolean(item, "online");
+				
+				PC pc = new PC(host, host, ip, mac, setor);
+				pc.lastSeen = lastSeen;
+				pc.online = online;
+				pcs.add(pc);
+			}
+			
+			Collections.sort(pcs, (a, b) -> a.nome.compareToIgnoreCase(b.nome));
+			System.out.println("PCs carregados: " + pcs.size());
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	static void atualizarStatusDoServidor() {
+		try {
+			URL url = new URL("http://10.224.10.45:8080/pcs");
+
+			HttpURLConnection con = (HttpURLConnection) url.openConnection();
+			con.setRequestMethod("GET");
+
+			BufferedReader br = new BufferedReader(
+				new InputStreamReader(con.getInputStream())
+			);
+
+			StringBuilder response = new StringBuilder();
+			String line;
+
+			while ((line = br.readLine()) != null) {
+				response.append(line);
+			}
+
+			String json = response.toString();
+
+			json = json.substring(1, json.length() - 1);
+			String[] itens = json.split("\\},\\{");
+
+			Map<String, Long> mapa = new HashMap<>();
+
+			for (String item : itens) {
+				item = item.replace("{", "").replace("}", "");
+
+				String host = extrair(item, "host");
+				long lastSeen = Long.parseLong(extrairNumero(item, "lastSeen"));
+
+				mapa.put(host, lastSeen);
+			}
+
+			long agora = System.currentTimeMillis();
+
+			for (PC pc : pcs) {
+				Long ls = mapa.get(pc.host);
+				if (ls != null) {
+					pc.lastSeen = ls;
+					pc.online = (agora - ls) < 15000;
+				} else {
+					pc.online = false;
+				}
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	static String extrair(String json, String campo) {
+
+		String busca = "\"" + campo + "\":\"";
+
+		int inicio = json.indexOf(busca);
+
+		if (inicio == -1) return "";
+
+		inicio += busca.length();
+
+		int fim = json.indexOf("\"", inicio);
+
+		return json.substring(inicio, fim);
+	}
+	
+	static String extrairNumero(String json, String campo) {
+
+		String busca = "\"" + campo + "\":";
+
+		int inicio = json.indexOf(busca);
+
+		if (inicio == -1) return "0";
+
+		inicio += busca.length();
+
+		int fim = inicio;
+
+		while (fim < json.length() && Character.isDigit(json.charAt(fim))) {
+			fim++;
+		}
+
+		return json.substring(inicio, fim);
+	}
+	
+	static boolean extrairBoolean(String json, String campo) {
+
+		String busca = "\"" + campo + "\":";
+
+		int inicio = json.indexOf(busca);
+
+		if (inicio == -1) return false;
+
+		inicio += busca.length();
+
+		if (json.startsWith("true", inicio)) {
+			return true;
+		}
+
+		return false;
+	}
 		
 	static void sendWakeOnLan(String macAddress, String broadcast, int port) {
 		try {
@@ -151,6 +291,10 @@ public class RedeApp {
     // MAIN
     // ==============================
     public static void main(String[] args) {
+		
+		carregarPCsDoServidor();
+		
+		Collections.sort(pcs, (a, b) -> a.nome.compareToIgnoreCase(b.nome));
 
 		JFrame frame = new JFrame("Controle da Rede");
 		frame.setSize(600, 450);
@@ -183,10 +327,10 @@ public class RedeApp {
 		// ==============================
 		
 		ImageIcon iconOn = new ImageIcon(
-			RedeApp.class.getResource("/ligar.png")
+			RedeApp.class.getResource("/imagens/ligar.png")
 		);
 		ImageIcon iconOff = new ImageIcon(
-			RedeApp.class.getResource("/desligar.png")
+			RedeApp.class.getResource("/imagens/desligar.png")
 		);
 		tree.setCellRenderer(new DefaultTreeCellRenderer() {
 			@Override
@@ -376,15 +520,9 @@ public class RedeApp {
 		// ==============================
 		// Atualização automática
 		// ==============================
-		Timer timer = new Timer(5000, e -> {
+		javax.swing.Timer timer = new javax.swing.Timer(5000, e -> {
 			new Thread(() -> {
-				for (PC pc : pcs) {
-					try {
-						pc.online = InetAddress.getByName(pc.ip).isReachable(1000);
-					} catch (Exception ex) {
-						pc.online = false;
-					}
-				}
+				atualizarStatusDoServidor();
 
 				SwingUtilities.invokeLater(() -> {
 					tree.repaint();
